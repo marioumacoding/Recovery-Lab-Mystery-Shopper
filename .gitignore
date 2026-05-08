@@ -1,0 +1,6 @@
+# Local sensitive settings
+config.local.js
+
+# Common local env files
+.env
+.env.local

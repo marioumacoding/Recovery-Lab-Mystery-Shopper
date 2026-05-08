@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recovery Lab – Audit Form</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--green:#0F6E56;--green-l:#1D9E75;--green-p:#E1F5EE;--green-d:#085041;--red:#E24B4A;--red-p:#FCEBEB;--amber:#EF9F27;--amber-p:#FAEEDA;--text:#1a1a1a;--muted:#6b7280;--border:#e5e7eb;--bg:#f9fafb;--white:#fff;--r:10px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.topbar{background:var(--green-d);padding:0 1.5rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar-brand{font-family:'DM Mono',monospace;font-size:13px;color:rgba(255,255,255,.9);letter-spacing:.06em}
+.topbar-step{font-size:12px;color:rgba(255,255,255,.5);font-family:'DM Mono',monospace}
+.prog-track{height:3px;background:#e5e7eb;position:sticky;top:52px;z-index:99}
+.prog-fill{height:3px;background:var(--green-l);transition:width .35s ease}
+.container{max-width:620px;margin:0 auto;padding:2rem 1.25rem 5rem}
+.sec-eye{font-family:'DM Mono',monospace;font-size:11px;color:var(--green);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem}
+.sec-title{font-size:22px;font-weight:500;margin-bottom:.25rem}
+.sec-sub{font-size:13px;color:var(--muted);margin-bottom:2rem}
+.field-wrap{margin-bottom:1.5rem}
+.field-label{font-size:13px;color:var(--muted);display:block;margin-bottom:.45rem}
+.field-input{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--r);font-size:15px;font-family:'DM Sans',sans-serif;background:var(--white);outline:none;color:var(--text);transition:border-color .15s}
+.field-input:focus{border-color:var(--green-l)}
+.q-block{margin-bottom:1.5rem}
+.q-text{font-size:14px;font-weight:500;line-height:1.55;margin-bottom:.6rem;display:flex;gap:6px;align-items:flex-start}
+.q-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);min-width:32px;padding-top:2px;flex-shrink:0}
+.q-kpi{font-size:10px;background:#dbeafe;color:#1e3a5f;padding:2px 6px;border-radius:4px;margin-left:4px;vertical-align:middle;font-family:'DM Mono',monospace;flex-shrink:0;margin-top:2px}
+.yn-row{display:flex;gap:8px}
+.yn-btn{flex:1;padding:9px 0;border:1.5px solid var(--border);border-radius:var(--r);background:var(--white);font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .15s;color:var(--text)}
+.yn-btn:hover{border-color:#9ca3af}
+.yn-btn.yes{background:var(--green-p);border-color:var(--green-l);color:var(--green-d);font-weight:500}
+.yn-btn.no{background:var(--red-p);border-color:var(--red);color:#7f1d1d;font-weight:500}
+.ifno-block{overflow:hidden;max-height:0;transition:max-height .2s ease;margin-top:.5rem}
+.ifno-block.open{max-height:200px}
+.ifno-block label{font-size:12px;color:var(--muted);display:block;margin-bottom:.35rem}
+.ifno-block textarea,.open-q textarea{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:13px;resize:none;min-height:64px;outline:none;background:var(--white);color:var(--text);transition:border-color .15s}
+.ifno-block textarea:focus,.open-q textarea:focus{border-color:var(--green-l)}
+.open-q textarea{min-height:72px}
+.q-err{font-size:12px;color:var(--red);margin-top:.4rem;display:none}
+/* multiselect */
+.ms-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ms-opt{padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);background:var(--white);font-size:13px;cursor:pointer;transition:all .15s;color:var(--text);text-align:left}
+.ms-opt:hover{border-color:#9ca3af}
+.ms-opt.sel{background:var(--green-p);border-color:var(--green-l);color:var(--green-d);font-weight:500}
+/* nav */
+.nav-bar{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);padding:.85rem 1.25rem;display:flex;justify-content:center}
+.nav-inner{max-width:620px;width:100%;display:flex;gap:10px}
+.btn-back{padding:10px 20px;border:1.5px solid var(--border);border-radius:var(--r);background:var(--white);font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--muted)}
+.btn-next{flex:1;padding:10px 20px;border:none;border-radius:var(--r);background:var(--green);color:#fff;font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .15s}
+.btn-next:hover{background:var(--green-l)}
+/* prev responses panel */
+.prev-toggle{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;padding:.85rem 1rem;background:var(--white);border:1px solid var(--border);border-radius:var(--r);cursor:pointer}
+.prev-toggle span{font-size:13px;color:var(--muted)}
+.prev-toggle b{font-size:13px;font-weight:500}
+.prev-panel{display:none;margin-bottom:1.5rem}
+.prev-panel.open{display:block}
+.prev-entry{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1rem;margin-bottom:.75rem;cursor:pointer;transition:border-color .15s}
+.prev-entry:hover{border-color:var(--green-l)}
+.prev-entry-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:.35rem}
+.prev-entry-date{font-size:12px;color:var(--muted);font-family:'DM Mono',monospace}
+.prev-entry-score{font-size:13px;font-weight:500;font-family:'DM Mono',monospace;padding:2px 10px;border-radius:20px}
+.chip-e{background:var(--green-p);color:var(--green-d)}
+.chip-g{background:#dbeafe;color:#1e3a5f}
+.chip-i{background:var(--amber-p);color:#633806}
+.chip-p{background:var(--red-p);color:#7f1d1d}
+.prev-entry-meta{font-size:12px;color:var(--muted)}
+/* submitting / success */
+.overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem}
+.overlay.show{display:flex}
+.loader{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--green-l);border-radius:50%;animation:spin .75s linear infinite;margin-bottom:1.25rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.overlay h2{font-size:18px;font-weight:500;margin-bottom:.5rem}
+.overlay p{font-size:14px;color:var(--muted);line-height:1.6;max-width:340px;margin:.5rem auto 1.5rem}
+.score-pill{display:inline-block;background:var(--green-p);color:var(--green-d);font-size:36px;font-weight:500;padding:.6rem 2rem;border-radius:50px;margin:.75rem 0;font-family:'DM Mono',monospace}
+.btn-new{padding:11px 28px;border:1.5px solid var(--border);border-radius:var(--r);background:var(--white);font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="topbar-brand">RECOVERY LAB / AUDIT</span>
+  <span class="topbar-step" id="step-label">1 of 15</span>
+</div>
+<div class="prog-track"><div class="prog-fill" id="prog" style="width:6.6%"></div></div>
+
+<div class="container" id="form-area"></div>
+
+<div class="overlay" id="ov-submitting">
+  <div class="loader"></div>
+  <h2>Saving your audit…</h2>
+  <p>Sending to Google Sheets</p>
+</div>
+<div class="overlay" id="ov-success">
+  <div style="font-size:40px;margin-bottom:.75rem">✓</div>
+  <h2>Audit submitted</h2>
+  <div class="score-pill" id="final-score">—</div>
+  <p>Saved to Google Sheets. The dashboard will update immediately.</p>
+  <button class="btn-new" onclick="resetForm()">Submit another audit</button>
+</div>
+
+<div class="nav-bar" id="nav-bar">
+  <div class="nav-inner">
+    <button class="btn-back" id="btn-back" onclick="nav(-1)">Back</button>
+    <button class="btn-next" id="btn-next" onclick="nav(1)">Next</button>
+  </div>
+</div>
+
+<script src="config.local.js"></script>
+<script>
+var RL_CONFIG = window.RL_CONFIG || {};
+var SHEET_URL = RL_CONFIG.SHEET_URL || "";
+var SUBMISSION_ID_PREFIX = RL_CONFIG.SUBMISSION_ID_PREFIX || "RL";
+
+var SERVICES = ["Swedish Massage","Deep Tissue Massage","Sports Massage","Hot Stone Massage","Moroccan Bath","Hammam","Facial","Body Scrub","Couple's Treatment","Other"];
+
+var BRANCHES = ["New Cairo","Zayed"]; // ← edit your branch names here
+
+/* ── SCORING CONFIG ─────────────────────────────────────── */
+// pts: question weight (1=basic, 2=important, 3=critical)
+// rev: reverse scored (No=good)
+// kpi: show KPI badge
+var Q_CONFIG = {
+  q1_1:{pts:1},q1_2:{pts:2},q1_3:{pts:1},q1_4:{pts:1},
+  q1_5:{pts:3},q1_6:{pts:2},q1_7:{pts:3},
+  q1_8:{pts:2},q1_9:{pts:1},q1_10:{pts:3},
+  q1_11:{pts:1},q1_12:{pts:1},q1_13:{pts:1},q1_14:{pts:2},
+  q2_1:{pts:1},q2_2:{pts:3},q2_3:{pts:3},q2_4:{pts:2},
+  q3_1:{pts:2},q3_2:{pts:2},q3_3:{pts:1},q3_4:{pts:3},q3_5:{pts:2},q3_6:{pts:2},
+  q4_1:{pts:3},
+  q5_1:{pts:3},q5_2:{pts:2},q5_3:{pts:3},q5_4:{pts:1},
+  q6_1:{pts:3},q6_2:{pts:3},q6_3:{pts:2},q6_4:{pts:1},q6_5:{pts:2},
+  q7_1:{pts:3},q7_2:{pts:3},
+  q8_1:{pts:2},q8_2:{pts:3},q8_3:{pts:3},q8_4:{pts:3},
+  q8_5:{pts:2},q8_6:{pts:3},q8_7:{pts:2},q8_8:{pts:3},
+  q8_9:{pts:3},q8_10:{pts:2},q8_11:{pts:2},q8_12:{pts:2},
+  q8_13:{pts:3},q8_14:{pts:3},
+  q9_1:{pts:3},q9_2:{pts:3,rev:1},q9_3:{pts:2},
+  q10_1:{pts:3},q10_2:{pts:3},
+  q11_1:{pts:2},q11_2:{pts:1},
+  q12_1:{pts:2},
+  q13_1:{pts:2},q13_2:{pts:2}
+};
+
+// Section weights — must total 1.0
+var SEC_WEIGHTS = {
+  s1:0.08,s2:0.08,s3:0.06,s4:0.05,s5:0.07,s6:0.10,
+  s7:0.07,s8:0.25,s9:0.10,s10:0.06,s11:0.02,s12:0.02,s13:0.04
+};
+
+/* ── SECTIONS ───────────────────────────────────────────── */
+var SECTIONS=[
+  {id:"intro",title:"Start",intro:true},
+  {id:"s1",title:"Booking Experience",qs:[
+    {id:"q1_1",n:"1.1",text:"Was the response time fast?"},
+    {id:"q1_2",n:"1.2",text:"Was the response professional and welcoming?"},
+    {id:"q1_3",n:"1.3",text:"Was the English communication clear and professional?"},
+    {id:"q1_4",n:"1.4",text:"Was the Arabic communication clear and professional?"},
+    {id:"q1_5",n:"1.5",text:"Did they ask about your needs (pain, activity, recovery goals)?"},
+    {id:"q1_6",n:"1.6",text:"Did they clearly explain the services?"},
+    {id:"q1_7",n:"1.7",text:"Did they recommend a service based on your needs?"},
+    {id:"q1_8",n:"1.8",text:"Did they suggest upgrades, packages, or better options?"},
+    {id:"q1_9",n:"1.9",text:"Did they mention any offers, discounts, or packages?"},
+    {id:"q1_10",n:"1.10",text:"Did the conversation feel consultative (not just booking)?"},
+    {id:"q1_11",n:"1.11",text:"Did you receive a confirmation message?"},
+    {id:"q1_12",n:"1.12",text:"Did the confirmation include all details (time, service, location)?"},
+    {id:"q1_13",n:"1.13",text:"Was there a follow-up before your appointment?"},
+    {id:"q1_14",n:"1.14",text:"Was the follow-up professional and helpful?"}
+  ]},
+  {id:"s2",title:"Arrival Experience",qs:[
+    {id:"q2_1",n:"2.1",text:"Was the location easy to find?"},
+    {id:"q2_2",n:"2.2",text:"Was the first impression premium and welcoming?"},
+    {id:"q2_3",n:"2.3",text:"Were you greeted immediately and warmly?"},
+    {id:"q2_4",n:"2.4",text:"Was the waiting time acceptable?"}
+  ]},
+  {id:"s3",title:"Check-In & Intake",qs:[
+    {id:"q3_1",n:"3.1",text:"Were you given a medical/consent form?"},
+    {id:"q3_2",n:"3.2",text:"Was the form clearly explained?"},
+    {id:"q3_3",n:"3.3",text:"Was the form given at the right time (not rushed)?"},
+    {id:"q3_4",n:"3.4",text:"Did staff review your answers?"},
+    {id:"q3_5",n:"3.5",text:"Was the check-in process smooth?"},
+    {id:"q3_6",n:"3.6",text:"Were you asked about therapist preference (gender/nationality)?"}
+  ]},
+  {id:"s4",title:"Communication",qs:[
+    {id:"q4_1",n:"4.1",text:"Was staff communication polished and professional?"}
+  ]},
+  {id:"s5",title:"Facility & Lockers",qs:[
+    {id:"q5_1",n:"5.1",text:"Were the locker rooms clean?"},
+    {id:"q5_2",n:"5.2",text:"Were essential items provided (towel, robe, slippers)?"},
+    {id:"q5_3",n:"5.3",text:"Was your privacy respected in locker areas?"},
+    {id:"q5_4",n:"5.4",text:"Were the lockers comfortable and well-prepared?"}
+  ]},
+  {id:"s6",title:"Cleanliness & Scent",qs:[
+    {id:"q6_1",n:"6.1",text:"Was the overall place clean?"},
+    {id:"q6_2",n:"6.2",text:"Was cleanliness consistent across all areas?"},
+    {id:"q6_3",n:"6.3",text:"Was the scent pleasant and fresh?"},
+    {id:"q6_4",n:"6.4",text:"Was the scent consistent across the space?"},
+    {id:"q6_5",n:"6.5",text:"Was the air quality comfortable?"}
+  ]},
+  {id:"s7",title:"Atmosphere",qs:[
+    {id:"q7_1",n:"7.1",text:"Was the environment quiet and relaxing?"},
+    {id:"q7_2",n:"7.2",text:"Was staff behavior professional and respectful?"}
+  ]},
+  {id:"s8",title:"Service Experience",qs:[
+    {id:"q8_1",n:"8.1",text:"Was the room ready upon arrival?"},
+    {id:"q8_2",n:"8.2",text:"Was the room clean?"},
+    {id:"q8_3",n:"8.3",text:"Was the therapist professional?"},
+    {id:"q8_4",n:"8.4",text:"Did the therapist assess your condition before starting?"},
+    {id:"q8_5",n:"8.5",text:"Was communication during the session appropriate (not distracting)?"},
+    {id:"q8_6",n:"8.6",text:"When you requested pressure adjustment, did they respond correctly?"},
+    {id:"q8_7",n:"8.7",text:"Was the pressure consistent throughout the session?"},
+    {id:"q8_8",n:"8.8",text:"Did the therapist check your comfort during the session?"},
+    {id:"q8_9",n:"8.9",text:"Was the therapist fully focused during the session?"},
+    {id:"q8_10",n:"8.10",text:"Was there clear guidance during the spa experience?"},
+    {id:"q8_11",n:"8.11",text:"Was the guidance structured and professional?"},
+    {id:"q8_12",n:"8.12",text:"Was staff non-pushy during the experience?"},
+    {id:"q8_13",n:"8.13",text:"Was the Moroccan bath experience professional?",moroccan:true},
+    {id:"q8_14",n:"8.14",text:"Was the Moroccan bath private?",moroccan:true}
+  ]},
+  {id:"s9",title:"Privacy",qs:[
+    {id:"q9_1",n:"9.1",text:"Was your overall experience private?"},
+    {id:"q9_2",n:"9.2",text:"Were there any privacy issues (clients/staff entering unexpectedly)?",flip:true},
+    {id:"q9_3",n:"9.3",text:"Were you informed about any shared spaces in advance?"}
+  ]},
+  {id:"s10",title:"Experience Flow",qs:[
+    {id:"q10_1",n:"10.1",text:"Was your journey smooth and well-managed?"},
+    {id:"q10_2",n:"10.2",text:"Did you feel guided throughout your experience?"}
+  ]},
+  {id:"s11",title:"Tipping",qs:[
+    {id:"q11_1",n:"11.1",text:"Did the therapist avoid asking for tips?"},
+    {id:"q11_2",n:"11.2",text:"If tipping occurred, was it handled properly (through reception)?"}
+  ]},
+  {id:"s12",title:"Payment",qs:[
+    {id:"q12_1",n:"12.1",text:"Was the payment process smooth?"}
+  ]},
+  {id:"s13",title:"Post-Visit",qs:[
+    {id:"q13_1",n:"13.1",text:"Did you receive a follow-up after your visit?"},
+    {id:"q13_2",n:"13.2",text:"Was the follow-up professional and useful?"}
+  ]},
+  {id:"s14",title:"Final",qs:[
+    {id:"q14_1",n:"14.1",text:"Did the experience feel like a structured recovery journey?",type:"yn_open"},
+    {id:"q14_2",n:"14.2",text:"Would you return?",type:"yn_open"},
+    {id:"q14_3",n:"14.3",text:"What stood out most?",type:"open"},
+    {id:"q14_4",n:"14.4",text:"Biggest issue?",type:"open"}
+  ]}
+];
+
+var answers={}, cur=0, total=SECTIONS.length;
+var hasMoroccan=false;
+
+function render(){
+  var pct=Math.round(((cur+1)/total)*100);
+  document.getElementById('prog').style.width=pct+'%';
+  document.getElementById('step-label').textContent=(cur+1)+' of '+total;
+  document.getElementById('btn-back').style.display=cur===0?'none':'block';
+  document.getElementById('btn-next').textContent=cur===total-1?'Submit audit':'Continue';
+
+  var s=SECTIONS[cur], html='';
+
+  if(s.intro){
+    // html+=prevResponsesPanel();
+    html+='<div class="sec-eye">Mystery Shopper Audit</div>';
+    html+='<div class="sec-title">Recovery Lab</div>';
+    html+='<div class="sec-sub">14 sections · ~8 minutes · Starred questions required</div>';
+    // Branch
+    html+='<div class="field-wrap"><label class="field-label">Branch *</label><select class="field-input" id="f-branch">';
+    html+='<option value="">Select branch…</option>';
+    BRANCHES.forEach(function(b){html+='<option value="'+b+'"'+(answers._branch===b?' selected':'')+'>'+b+'</option>';});
+    html+='</select></div>';
+    // Auditor
+    html+='<div class="field-wrap"><label class="field-label">Auditor name</label>';
+    html+='<input class="field-input" id="f-auditor" placeholder="Enter auditor name" value="'+(answers._auditor||'')+'"></div>';
+    // Therapist
+    html+='<div class="field-wrap"><label class="field-label">Therapist name</label>';
+    html+='<input class="field-input" id="f-therapist" placeholder="Name of the therapist" value="'+(answers._therapist||'')+'"></div>';
+    // Services multiselect
+    html+='<div class="field-wrap"><label class="field-label">Services received * <span style="font-size:11px;color:var(--muted)">(select all that apply)</span></label>';
+    html+='<div class="ms-grid">';
+    SERVICES.forEach(function(sv){
+      var sel=(answers._services||[]).indexOf(sv)>-1;
+      html+='<button type="button" class="ms-opt'+(sel?' sel':'')+'" onclick="toggleService(\''+sv+'\',this)">'+sv+'</button>';
+    });
+    html+='</div>';
+    html+='<div class="q-err" id="err-services">Please select at least one service.</div>';
+    html+='</div>';
+  } else {
+    html+='<div class="sec-eye">Section '+cur+' of 14</div>';
+    html+='<div class="sec-title">'+s.title+'</div>';
+    html+='<div class="sec-sub">Answer about your visit experience.</div>';
+    s.qs.forEach(function(q){
+      // Hide moroccan questions if service not selected
+      if(q.moroccan && !hasMoroccan) return;
+      renderQ(q, function(h){ html+=h; });
+    });
+  }
+
+  document.getElementById('form-area').innerHTML=html;
+}
+
+function renderQ(q, cb){
+  var cfg=Q_CONFIG[q.id]||{};
+  var av=answers[q.id];
+  var html='';
+
+  if(q.type==='open'){
+    html+='<div class="q-block">';
+    html+='<div class="q-text"><span class="q-num">'+q.n+'</span>'+q.text+'</div>';
+    html+='<div class="open-q"><textarea id="'+q.id+'" placeholder="Optional…">'+(answers[q.id]||'')+'</textarea></div>';
+    html+='</div>';
+  } else {
+    // yn or yn_open both render as yn
+    html+='<div class="q-block" id="qb_'+q.id+'">';
+    html+='<div class="q-text"><span class="q-num">'+q.n+'</span>'+q.text+' <span style="color:var(--red)">*</span>';
+    if(cfg.kpi) html+='<span class="q-kpi">KPI</span>';
+    if(cfg.rev) html+='<span style="font-size:10px;color:var(--amber);margin-left:4px;font-family:\'DM Mono\',monospace">↩ reverse</span>';
+    html+='</div>';
+    html+='<div class="yn-row">';
+    html+='<button class="yn-btn'+(av==='yes'?' yes':'')+'" onclick="pick(\''+q.id+'\',\'yes\')">Yes</button>';
+    html+='<button class="yn-btn'+(av==='no'?' no':'')+'" onclick="pick(\''+q.id+'\',\'no\')">No</button>';
+    html+='</div>';
+    html+='<div class="ifno-block'+(av==='no'?' open':'')+'" id="ifno_'+q.id+'">';
+    html+='<label style="margin-top:.5rem">If no, please explain (optional):</label>';
+    html+='<textarea placeholder="Add context…" onchange="answers[\''+q.id+'_note\']=this.value">'+(answers[q.id+'_note']||'')+'</textarea>';
+    html+='</div>';
+    html+='<div class="q-err" id="err_'+q.id+'">Please answer this question.</div>';
+    html+='</div>';
+  }
+  cb(html);
+}
+
+function toggleService(sv, btn){
+  if(!answers._services) answers._services=[];
+  var idx=answers._services.indexOf(sv);
+  if(idx>-1){ answers._services.splice(idx,1); btn.classList.remove('sel'); }
+  else { answers._services.push(sv); btn.classList.add('sel'); }
+  hasMoroccan=answers._services.indexOf('Moroccan Bath')>-1||answers._services.indexOf('Hammam')>-1;
+  document.getElementById('err-services').style.display='none';
+}
+
+function pick(id,val){
+  answers[id]=val;
+  var qb=document.getElementById('qb_'+id);
+  qb.querySelectorAll('.yn-btn').forEach(function(b){b.className='yn-btn';});
+  qb.querySelectorAll('.yn-btn')[val==='yes'?0:1].className='yn-btn '+val;
+  var ifno=document.getElementById('ifno_'+id);
+  if(ifno) ifno.className='ifno-block'+(val==='no'?' open':'');
+  var err=document.getElementById('err_'+id);
+  if(err) err.style.display='none';
+}
+
+function nav(dir){
+  var s=SECTIONS[cur];
+  if(dir===1){
+    // Save intro fields
+    if(s.intro){
+      var branch=document.getElementById('f-branch');
+      answers._branch=branch?branch.value:'';
+      var aud=document.getElementById('f-auditor');
+      answers._auditor=aud?aud.value.trim():'';
+      var th=document.getElementById('f-therapist');
+      answers._therapist=th?th.value.trim():'';
+      if(!answers._services||answers._services.length===0){
+        document.getElementById('err-services').style.display='block'; return;
+      }
+      if(!answers._branch){
+        var bs=document.getElementById('f-branch');
+        if(bs) bs.style.borderColor='var(--red)'; return;
+      }
+      hasMoroccan=answers._services.indexOf('Moroccan Bath')>-1||answers._services.indexOf('Hammam')>-1;
+    }
+    // Save open text answers
+    if(s.qs) s.qs.forEach(function(q){
+      if(q.type==='open'||q.type==='yn_open'){
+        var el=document.getElementById(q.id);
+        if(el) answers[q.id]=el.value;
+      }
+    });
+    // Validate required yn questions
+    if(s.qs){
+      var ok=true;
+      s.qs.forEach(function(q){
+        if(q.type==='open') return;
+        if(q.moroccan&&!hasMoroccan) return;
+        if(!answers[q.id]){
+          var err=document.getElementById('err_'+q.id);
+          if(err) err.style.display='block';
+          ok=false;
+        }
+      });
+      if(!ok){ var fe=document.querySelector('.q-err[style*="block"]'); if(fe) fe.scrollIntoView({behavior:'smooth',block:'center'}); return; }
+    }
+    if(cur===total-1){ submit(); return; }
+    cur++;
+  } else { if(cur>0) cur--; }
+  render();
+  window.scrollTo(0,0);
+}
+
+/* ── SCORING ─────────────────────────────────────────────── */
+function calcScores(){
+  var secResults={}, totalWeighted=0, issues=[], openAnswers={}, totalYes=0, totalNo=0, totalAnswered=0;
+  SECTIONS.forEach(function(s){
+    if(s.intro||!s.qs) return;
+    var earned=0, possible=0;
+    s.qs.forEach(function(q){
+      if(q.type==='open'){ if(answers[q.id]) openAnswers[q.n]=answers[q.id]; return; }
+      if(q.moroccan&&!hasMoroccan) return;
+      var cfg=Q_CONFIG[q.id]||{pts:1};
+      var av=answers[q.id]; if(!av) return;
+      totalAnswered++;
+      possible+=cfg.pts;
+      var isGood=cfg.rev?(av==='no'):(av==='yes');
+      if(isGood){
+        earned+=cfg.pts;
+        totalYes++;
+      } else {
+        issues.push({section:s.title,q:q.n+' '+q.text,note:answers[q.id+'_note']||'',pts:cfg.pts,kpi:cfg.kpi||0});
+        totalNo++;
+      }
+    });
+    var pct=possible>0?Math.round((earned/possible)*100):null;
+    var w=SEC_WEIGHTS[s.id]||0;
+    var weighted=pct!==null?parseFloat(((pct/100)*w*100).toFixed(2)):0;
+    secResults[s.id]={title:s.title,earned:earned,possible:possible,pct:pct,weight:w,weighted:weighted};
+    if(pct!==null) totalWeighted+=weighted;
+  });
+  var final=Math.round(totalWeighted);
+  return {secResults:secResults,final:final,issues:issues,openAnswers:openAnswers,totalYes:totalYes,totalNo:totalNo,totalAnswered:totalAnswered};
+}
+
+function generateSubmissionId(){
+  var now = new Date();
+  var y = now.getFullYear();
+  var m = String(now.getMonth()+1).padStart(2,'0');
+  var d = String(now.getDate()).padStart(2,'0');
+  var rand = Math.random().toString(36).slice(2,8).toUpperCase();
+  return SUBMISSION_ID_PREFIX + '-' + y + m + d + '-' + rand;
+}
+
+function getSubmissionId(){
+  if(!answers._submissionId) answers._submissionId = generateSubmissionId();
+  return answers._submissionId;
+}
+
+function submit(){
+  var scores=calcScores();
+  document.getElementById('nav-bar').style.display='none';
+  document.getElementById('ov-submitting').classList.add('show');
+
+  if(!SHEET_URL){
+    document.getElementById('ov-submitting').classList.remove('show');
+    alert('SHEET_URL is missing. Add it to config.local.js');
+    document.getElementById('nav-bar').style.display='flex';
+    return;
+  }
+
+  var submissionId = getSubmissionId();
+
+  var payload={
+    ts:new Date().toISOString(),
+    auditor:answers._auditor||'Anonymous',
+    branch:answers._branch||'',
+    therapist:answers._therapist||'',
+    services:(answers._services||[]).join(', '),
+    hasMoroccan:hasMoroccan,
+    sectionScores:scores.secResults,
+    overall:scores.final,
+    final:scores.final,
+    totalY:scores.totalYes,
+    totalN:scores.totalNo,
+    issues:scores.issues,
+    openAnswers:scores.openAnswers,
+    answers:answers
+  };
+
+  // Save to localStorage for "previous responses" panel
+  try{
+    var prev=JSON.parse(localStorage.getItem('rl_prev')||'[]');
+    prev.unshift({ts:payload.ts,auditor:payload.auditor,branch:payload.branch,therapist:payload.therapist,services:payload.services,final:scores.final,secResults:scores.secResults,issues:scores.issues});
+    if(prev.length>20) prev=prev.slice(0,20);
+    localStorage.setItem('rl_prev',JSON.stringify(prev));
+  }catch(e){}
+
+  fetch(SHEET_URL,{method:'POST',body:JSON.stringify(payload)})
+    .then(function(){showSuccess(scores.final);})
+    .catch(function(){showSuccess(scores.final);});
+}
+
+function showSuccess(score){
+  document.getElementById('ov-submitting').classList.remove('show');
+  document.getElementById('final-score').textContent=score+'%';
+  document.getElementById('ov-success').classList.add('show');
+}
+
+function resetForm(){
+  answers={};cur=0;hasMoroccan=false;
+  document.getElementById('ov-success').classList.remove('show');
+  document.getElementById('nav-bar').style.display='flex';
+  render(); window.scrollTo(0,0);
+}
+
+/* ── PREVIOUS RESPONSES PANEL ────────────────────────────── */
+function prevResponsesPanel(){
+  var prev=[];
+  try{prev=JSON.parse(localStorage.getItem('rl_prev')||'[]');}catch(e){}
+  if(prev.length===0) return '';
+  var html='<div class="prev-toggle" onclick="togglePrev()">';
+  html+='<b>Previous submissions ('+prev.length+')</b><span id="prev-arrow">▼ show</span>';
+  html+='</div>';
+  html+='<div class="prev-panel" id="prev-panel">';
+  prev.forEach(function(r,i){
+    var chip=r.final>=90?'chip-e':r.final>=75?'chip-g':r.final>=60?'chip-i':'chip-p';
+    var d=new Date(r.ts);
+    var ds=d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    html+='<div class="prev-entry" onclick="loadPrev('+i+')">';
+    html+='<div class="prev-entry-top">';
+    html+='<span class="prev-entry-date">'+ds+(r.branch?' · '+r.branch:'')+'</span>';
+    html+='<span class="prev-entry-score '+chip+'">'+r.final+'%</span>';
+    html+='</div>';
+    html+='<div class="prev-entry-meta">'+(r.therapist?'Therapist: '+r.therapist+' · ':'')+( r.services||'')+'</div>';
+    html+='</div>';
+  });
+  html+='</div>';
+  return html;
+}
+
+function togglePrev(){
+  var p=document.getElementById('prev-panel');
+  var a=document.getElementById('prev-arrow');
+  if(p.classList.contains('open')){p.classList.remove('open');a.textContent='▼ show';}
+  else{p.classList.add('open');a.textContent='▲ hide';}
+}
+
+function loadPrev(idx){
+  // Show a summary overlay of that submission's section scores
+  var prev=JSON.parse(localStorage.getItem('rl_prev')||'[]');
+  var r=prev[idx]; if(!r) return;
+  var chip=r.final>=90?'chip-e':r.final>=75?'chip-g':r.final>=60?'chip-i':'chip-p';
+  var html='<div style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:flex;align-items:center;justify-content:center;padding:1rem" onclick="this.remove()">';
+  html+='<div style="background:#fff;border-radius:14px;padding:1.5rem;max-width:420px;width:100%;max-height:80vh;overflow-y:auto" onclick="event.stopPropagation()">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">';
+  html+='<b style="font-size:16px">Audit detail</b>';
+  html+='<button onclick="this.closest(\'[onclick]\').remove()" style="border:none;background:none;font-size:18px;cursor:pointer;color:#6b7280">✕</button>';
+  html+='</div>';
+  html+='<div style="margin-bottom:1rem;font-size:13px;color:#6b7280">'+(r.branch||'')+(r.therapist?' · '+r.therapist:'')+'<br>'+(r.services||'')+'</div>';
+  html+='<div style="text-align:center;margin-bottom:1rem"><span class="prev-entry-score '+chip+'" style="font-size:28px;padding:.5rem 1.5rem">'+r.final+'%</span></div>';
+  if(r.secResults){
+    Object.keys(r.secResults).forEach(function(sid){
+      var sc=r.secResults[sid];
+      if(!sc||sc.pct===null) return;
+      var c=sc.pct>=75?'#1D9E75':sc.pct>=60?'#EF9F27':'#E24B4A';
+      html+='<div style="margin-bottom:.6rem">';
+      html+='<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px"><span>'+sc.title+'</span><span style="font-family:DM Mono,monospace;color:'+c+'">'+sc.pct+'%</span></div>';
+      html+='<div style="height:4px;background:#f0f0f0;border-radius:4px"><div style="height:4px;width:'+sc.pct+'%;background:'+c+';border-radius:4px"></div></div>';
+      html+='</div>';
+    });
+  }
+  if(r.issues&&r.issues.length){
+    html+='<div style="margin-top:1rem;font-size:13px;font-weight:500;margin-bottom:.5rem">Issues flagged ('+r.issues.length+')</div>';
+    r.issues.forEach(function(iss){
+      html+='<div style="font-size:12px;padding:.4rem 0;border-bottom:1px solid #f0f0f0;color:#6b7280"><span style="color:#1a1a1a">'+iss.section+':</span> '+iss.q+(iss.note?' — <em>'+iss.note+'</em>':'')+'</div>';
+    });
+  }
+  html+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+
+render();
+</script>
+</body>
+</html>
+

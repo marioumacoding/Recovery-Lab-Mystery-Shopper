@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recovery Lab – Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --green: #0F6E56;
+    --green-light: #1D9E75;
+    --green-pale: #E1F5EE;
+    --green-dark: #085041;
+    --red: #E24B4A;
+    --red-pale: #FCEBEB;
+    --amber: #EF9F27;
+    --amber-pale: #FAEEDA;
+    --text: #1a1a1a;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --bg: #f4f5f7;
+    --white: #ffffff;
+    --radius: 10px;
+    --card-radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* TOPBAR */
+  .topbar {
+    background: var(--green-dark);
+    padding: 0 2rem;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-brand { font-family: 'DM Mono', monospace; font-size: 13px; color: rgba(255,255,255,.9); letter-spacing:.06em; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .refresh-btn {
+    padding: 6px 14px;
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 6px;
+    background: transparent;
+    color: rgba(255,255,255,.8);
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .refresh-btn:hover { background: rgba(255,255,255,.1); }
+  .last-updated { font-size: 11px; color: rgba(255,255,255,.45); font-family: 'DM Mono', monospace; }
+
+  /* LAYOUT */
+  .page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  /* LOADING */
+  .loading-state { text-align: center; padding: 5rem; }
+  .loader { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--green-light); border-radius: 50%; animation: spin .75s linear infinite; margin: 0 auto 1rem; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-state p { color: var(--text-muted); font-size: 14px; }
+
+  /* EMPTY */
+  .empty-state { text-align: center; padding: 5rem 2rem; }
+  .empty-state h2 { font-size: 18px; font-weight: 500; margin-bottom: .5rem; }
+  .empty-state p { font-size: 14px; color: var(--text-muted); }
+
+  /* ERROR */
+  .error-banner {
+    background: var(--red-pale);
+    border: 1px solid #fca5a5;
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    font-size: 13px;
+    color: #7f1d1d;
+  }
+
+  /* KPI ROW */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .kpi-card {
+    background: var(--white);
+    border-radius: var(--card-radius);
+    padding: 1.25rem 1.5rem;
+    border: 1px solid var(--border);
+  }
+  .kpi-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .07em; font-family: 'DM Mono', monospace; margin-bottom: .4rem; }
+  .kpi-value { font-size: 32px; font-weight: 500; font-family: 'DM Mono', monospace; line-height: 1; }
+  .kpi-sub { font-size: 12px; color: var(--text-muted); margin-top: .35rem; }
+  .kpi-card.highlight { background: var(--green-dark); border-color: var(--green-dark); }
+  .kpi-card.highlight .kpi-label { color: rgba(255,255,255,.6); }
+  .kpi-card.highlight .kpi-value { color: #fff; }
+  .kpi-card.highlight .kpi-sub { color: rgba(255,255,255,.5); }
+
+  /* BADGE */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 6px;
+  }
+  .badge.excellent { background: var(--green-pale); color: var(--green-dark); }
+  .badge.good      { background: #dbeafe; color: #1e3a5f; }
+  .badge.improve   { background: var(--amber-pale); color: #633806; }
+  .badge.poor      { background: var(--red-pale); color: #7f1d1d; }
+
+  /* GRID 2 COL */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 1.5rem; }
+  @media(max-width:700px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  /* CARDS */
+  .card {
+    background: var(--white);
+    border-radius: var(--card-radius);
+    border: 1px solid var(--border);
+    padding: 1.25rem 1.5rem;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 1.25rem;
+  }
+
+  /* SECTION BARS */
+  .sec-bar-wrap { margin-bottom: .85rem; }
+  .sec-bar-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: .3rem; }
+  .sec-bar-name { font-size: 13px; }
+  .sec-bar-pct { font-size: 13px; font-family: 'DM Mono', monospace; font-weight: 500; }
+  .sec-bar-track { height: 6px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+  .sec-bar-fill { height: 6px; border-radius: 4px; transition: width .5s ease; }
+
+  /* ISSUES TABLE */
+  .issues-list { }
+  .issue-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: .65rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .issue-row:last-child { border-bottom: none; }
+  .issue-sec { font-size: 11px; color: var(--green); font-family: 'DM Mono', monospace; font-weight: 500; }
+  .issue-q { font-size: 13px; }
+  .issue-count { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--red); font-weight: 500; }
+
+  /* SUBMISSIONS TABLE */
+  .sub-table-wrap { overflow-x: auto; margin-bottom: 1.5rem; }
+  .sub-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .sub-table th {
+    text-align: left;
+    padding: .6rem 1rem;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .sub-table td {
+    padding: .7rem 1rem;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .sub-table tr:last-child td { border-bottom: none; }
+  .sub-table tr:hover td { background: var(--bg); }
+  .sub-table tr.record-row { cursor: pointer; }
+  .sub-table tr.record-row.selected td { background: var(--green-pale); }
+  .score-chip {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .chip-e { background: var(--green-pale); color: var(--green-dark); }
+  .chip-g { background: #dbeafe; color: #1e3a5f; }
+  .chip-i { background: var(--amber-pale); color: #633806; }
+  .chip-p { background: var(--red-pale); color: #7f1d1d; }
+
+  /* CHART CANVAS */
+  canvas { max-width: 100%; }
+
+  .section-full { margin-bottom: 1.5rem; }
+
+  .filter-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--green-pale);
+    border: 1px solid #b9e6d8;
+    color: var(--green-dark);
+    border-radius: var(--card-radius);
+    padding: .9rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 13px;
+  }
+  .filter-banner strong { font-weight: 500; }
+  .filter-banner-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .mini-btn {
+    border: 1px solid rgba(8,80,65,.18);
+    background: rgba(255,255,255,.6);
+    color: var(--green-dark);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+  }
+  .mini-btn:hover { background: rgba(255,255,255,.9); }
+
+  .record-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.48);
+    z-index: 250;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .record-modal {
+    width: min(720px, 100%);
+    max-height: 86vh;
+    overflow: hidden;
+    background: var(--white);
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,.18);
+    box-shadow: 0 20px 60px rgba(0,0,0,.22);
+    display: flex;
+    flex-direction: column;
+  }
+  .record-modal-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+  }
+  .record-modal-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+  .record-modal-sub { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+  .record-modal-body {
+    padding: 1rem 1.1rem 1.1rem;
+    overflow-y: auto;
+  }
+  .record-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 1rem;
+  }
+  @media(max-width:700px) { .record-modal-grid { grid-template-columns: 1fr; } }
+  .record-metric {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: .8rem .9rem;
+    background: #fff;
+  }
+  .record-metric-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; font-family: 'DM Mono', monospace; margin-bottom: .35rem; }
+  .record-metric-value { font-size: 24px; font-weight: 500; font-family: 'DM Mono', monospace; line-height: 1; }
+  .record-section { margin-bottom: 1rem; }
+  .record-section h4 { font-size: 13px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; font-family: 'DM Mono', monospace; margin-bottom: .6rem; }
+  .record-list { display: flex; flex-direction: column; gap: .75rem; }
+  .record-note { font-size: 13px; color: var(--text-muted); }
+  .record-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 0 1.1rem 1.1rem;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="topbar-brand">RECOVERY LAB / DASHBOARD</span>
+  <div class="topbar-right">
+    <span class="last-updated" id="last-updated">—</span>
+    <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+  </div>
+</div>
+
+<div class="page">
+
+  <div id="loading-state" class="loading-state">
+    <div class="loader"></div>
+    <p>Loading audit data...</p>
+  </div>
+
+  <div id="error-banner" class="error-banner" style="display:none"></div>
+
+  <div id="filter-banner" class="filter-banner" style="display:none"></div>
+
+  <div id="dash" style="display:none">
+
+    <!-- KPI ROW -->
+    <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div id="branch-filter"></div>
+      <div id="therapist-filter"></div>
+    </div>
+    <div class="kpi-row" id="kpi-row"></div>
+
+    <!-- TREND + SECTIONS -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Score trend</div>
+        <canvas id="trend-chart" height="180"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Section scores (avg)</div>
+        <div id="sec-bars"></div>
+      </div>
+    </div>
+
+    <!-- RADAR + TOP ISSUES -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Section radar</div>
+        <canvas id="radar-chart" height="220"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Most flagged issues</div>
+        <div class="issues-list" id="issues-list"></div>
+      </div>
+    </div>
+
+    <!-- SUBMISSIONS TABLE -->
+    <div class="card section-full sub-table-wrap">
+      <div class="card-title" style="margin-bottom:.75rem">All submissions</div>
+      <table class="sub-table" id="sub-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Submission ID</th>
+            <th>Score</th>
+            <th>Label</th>
+            <th>Yes</th>
+            <th>No</th>
+          </tr>
+        </thead>
+        <tbody id="sub-tbody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <div id="empty-state" class="empty-state" style="display:none">
+    <h2>No submissions yet</h2>
+    <p>Once auditors submit the form, results will appear here automatically.</p>
+  </div>
+
+  <div id="record-modal-overlay" class="record-modal-overlay" onclick="hideRecordModal()">
+    <div class="record-modal" onclick="event.stopPropagation()">
+      <div class="record-modal-header">
+        <div>
+          <div class="record-modal-title" id="record-modal-title">Record detail</div>
+          <div class="record-modal-sub" id="record-modal-sub"></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="mini-btn" id="open-full-btn" onclick="openFullView(currentDetailKey)">Open full view</button>
+          <button class="mini-btn" onclick="hideRecordModal()">Close</button>
+        </div>
+      </div>
+      <div class="record-modal-body" id="record-modal-body"></div>
+      <div class="record-footer">
+        <button class="mini-btn" id="record-filter-btn" onclick="filterToCurrentRecord()">Show only this record</button>
+        <button class="mini-btn" onclick="clearRecordFilter()">Show all records</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="config.local.js"></script>
+<script>
+// ── CONFIG ─────────────────────────────────────────────────
+var RL_CONFIG = window.RL_CONFIG || {};
+var SHEET_URL = RL_CONFIG.SHEET_URL || "";
+
+var SECTION_COLS = [
+  { key: "S1 Booking %",       label: "Booking" },
+  { key: "S2 Arrival %",       label: "Arrival" },
+  { key: "S3 Check-In %",      label: "Check-In" },
+  { key: "S4 Communication %", label: "Communication" },
+  { key: "S5 Facility %",      label: "Facility" },
+  { key: "S6 Cleanliness %",   label: "Cleanliness" },
+  { key: "S7 Atmosphere %",    label: "Atmosphere" },
+  { key: "S8 Service %",       label: "Service" },
+  { key: "S9 Privacy %",       label: "Privacy" },
+  { key: "S10 Flow %",         label: "Flow" },
+  { key: "S11 Tipping %",      label: "Tipping" },
+  { key: "S12 Payment %",      label: "Payment" },
+  { key: "S13 Post-Visit %",   label: "Post-Visit" },
+  { key: "S14 Final %",        label: "Final" }
+];
+
+var FLAG_MAP = {
+  "1.1": { section: "Booking Experience", flag: "slow_response", issue: "Delayed response time" },
+  "1.2": { section: "Booking Experience", flag: "unprofessional_response", issue: "Unwelcoming or unprofessional tone" },
+  "1.3": { section: "Booking Experience", flag: "poor_english_communication", issue: "Unclear English communication" },
+  "1.4": { section: "Booking Experience", flag: "poor_arabic_communication", issue: "Unclear Arabic communication" },
+  "1.5": { section: "Booking Experience", flag: "no_needs_assessment", issue: "No client needs assessment" },
+  "1.6": { section: "Booking Experience", flag: "unclear_service_explanation", issue: "Services not clearly explained" },
+  "1.7": { section: "Booking Experience", flag: "no_recommendation", issue: "No personalized service recommendation" },
+  "1.8": { section: "Booking Experience", flag: "no_upgrade_suggestion", issue: "No upsell or package suggestion" },
+  "1.9": { section: "Booking Experience", flag: "no_offers_mentioned", issue: "No offers or discounts mentioned" },
+  "1.10": { section: "Booking Experience", flag: "non_consultative_booking", issue: "Booking felt transactional, not consultative" },
+  "1.11": { section: "Booking Experience", flag: "no_confirmation_sent", issue: "No confirmation message received" },
+  "1.12": { section: "Booking Experience", flag: "incomplete_confirmation", issue: "Missing booking details in confirmation" },
+  "1.13": { section: "Booking Experience", flag: "no_followup", issue: "No pre-appointment follow-up" },
+  "1.14": { section: "Booking Experience", flag: "poor_followup_quality", issue: "Unhelpful or unprofessional follow-up" },
+  "2.1": { section: "Arrival Experience", flag: "hard_to_find_location", issue: "Location difficult to find" },
+  "2.2": { section: "Arrival Experience", flag: "weak_first_impression", issue: "Poor first impression (cleanliness/aesthetic/atmosphere)" },
+  "2.3": { section: "Arrival Experience", flag: "no_warm_greeting", issue: "No immediate or warm greeting" },
+  "2.4": { section: "Arrival Experience", flag: "long_wait_time", issue: "Excessive waiting time" },
+  "3.1": { section: "Check-in", flag: "missing_consent_form", issue: "No medical/consent form provided" },
+  "3.2": { section: "Check-in", flag: "unclear_form_explanation", issue: "Form not clearly explained" },
+  "3.3": { section: "Check-in", flag: "rushed_form_process", issue: "Form given at inappropriate time (rushed)" },
+  "3.4": { section: "Check-in", flag: "no_form_review", issue: "Staff did not review answers" },
+  "3.5": { section: "Check-in", flag: "poor_checkin_process", issue: "Unsmooth check-in experience" },
+  "3.6": { section: "Check-in", flag: "no_therapist_preference", issue: "No therapist preference asked" },
+  "4.1": { section: "Communication", flag: "unprofessional_communication", issue: "Poor or unpolished communication" },
+  "5.1": { section: "Facility", flag: "unclean_lockers", issue: "Locker rooms not clean" },
+  "5.2": { section: "Facility", flag: "missing_essentials", issue: "Missing towel/robe/slippers" },
+  "5.3": { section: "Facility", flag: "privacy_issue_lockers", issue: "Privacy not respected in locker area" },
+  "5.4": { section: "Facility", flag: "poor_lockers_setup", issue: "Lockers not prepared or uncomfortable" },
+  "6.1": { section: "Cleanliness", flag: "unclean_facility", issue: "Overall cleanliness poor" },
+  "6.2": { section: "Cleanliness", flag: "inconsistent_cleanliness", issue: "Cleanliness inconsistent across areas" },
+  "6.3": { section: "Cleanliness", flag: "bad_scent", issue: "Unpleasant smell" },
+  "6.4": { section: "Cleanliness", flag: "inconsistent_scent", issue: "Scent not consistent" },
+  "6.5": { section: "Cleanliness", flag: "poor_air_quality", issue: "Uncomfortable air quality" },
+  "7.1": { section: "Atmosphere", flag: "no_relaxing_environment", issue: "Environment not quiet or relaxing" },
+  "7.2": { section: "Atmosphere", flag: "unprofessional_staff_behavior", issue: "Staff behavior not professional" },
+  "8.1": { section: "Service", flag: "room_not_ready", issue: "Room not ready upon arrival" },
+  "8.2": { section: "Service", flag: "unclean_room", issue: "Room not clean" },
+  "8.3": { section: "Service", flag: "unprofessional_therapist", issue: "Therapist not professional" },
+  "8.4": { section: "Service", flag: "no_assessment_before_service", issue: "No condition assessment before treatment" },
+  "8.5": { section: "Service", flag: "poor_communication_during_session", issue: "Inappropriate communication during session" },
+  "8.6": { section: "Service", flag: "poor_pressure_adjustment_response", issue: "Therapist did not adjust pressure correctly" },
+  "8.7": { section: "Service", flag: "inconsistent_pressure", issue: "Pressure not consistent" },
+  "8.8": { section: "Service", flag: "no_comfort_check", issue: "No comfort check during session" },
+  "8.9": { section: "Service", flag: "lack_of_focus", issue: "Therapist not focused" },
+  "8.10": { section: "Service", flag: "no_clear_guidance", issue: "No clear guidance during experience" },
+  "8.11": { section: "Service", flag: "poor_structure_guidance", issue: "Guidance not structured" },
+  "8.12": { section: "Service", flag: "pushy_staff", issue: "Staff was pushy" },
+  "8.13": { section: "Service", flag: "unprofessional_moroccan_bath", issue: "Moroccan bath not professional" },
+  "8.14": { section: "Service", flag: "privacy_issue_bath", issue: "Moroccan bath not private" },
+  "9.1": { section: "Privacy", flag: "privacy_not_respected", issue: "Overall privacy not respected" },
+  "9.2": { section: "Privacy", flag: "privacy_breach", issue: "Unexpected entry / privacy violation" },
+  "9.3": { section: "Privacy", flag: "no_privacy_information", issue: "Client not informed about shared spaces" }
+};
+
+function getFlagInfo(issueText) {
+  var qid = (issueText || '').trim().split(/\s+/)[0] || '';
+  var meta = FLAG_MAP[qid] || null;
+  return {
+    qid: qid,
+    section: meta ? meta.section : '',
+    flag: meta ? meta.flag : '',
+    issue: meta ? meta.issue : ''
+  };
+}
+
+var trendChart = null;
+var radarChart = null;
+var allRows = [];
+var activeRecordKey = null;
+var currentDetailKey = null;
+var activeBranch = null;
+var activeTherapist = null;
+var activeIssue = null; // {section: '', q: ''}
+
+function toNumber(value) {
+  var num = parseFloat(value);
+  return isNaN(num) ? null : num;
+}
+
+function parseJson(value, fallback) {
+  try {
+    return JSON.parse(value || fallback);
+  } catch (e) {
+    return JSON.parse(fallback);
+  }
+}
+
+function makeRowKey(index) {
+  return 'r' + index;
+}
+
+function looksLikeSubmissionId(value) {
+  if (!value) return false;
+  return /^[A-Z]{2,10}-\d{8}-[A-Z0-9]{4,10}$/.test(String(value).trim());
+}
+
+function getSubmissionId(row) {
+  var raw = parseJson(row['Raw Answers (JSON)'], '{}');
+  var fromRaw = raw._submissionId || '';
+  var fromCol = row['Auditor'] || '';
+  if (looksLikeSubmissionId(fromRaw)) return fromRaw;
+  if (looksLikeSubmissionId(fromCol)) return fromCol;
+  var legacyKey = row.__rowKey || 'r0';
+  return 'LEGACY-' + legacyKey.replace(/^r/, '').padStart(4, '0');
+}
+
+function renderTherapistFilter() {
+  var container = document.getElementById('therapist-filter');
+  if (!container) return;
+  var therapists = allRows.map(function(r){ var raw = parseJson(r['Raw Answers (JSON)'], '{}'); return r['Therapist'] || raw._therapist || ''; }).filter(function(t){ return t && t.trim(); });
+  therapists = Array.from(new Set(therapists));
+  if (therapists.length === 0) { container.innerHTML = ''; return; }
+  var html = '<select id="therapist-select" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px">';
+  html += '<option value="">All therapists</option>';
+  therapists.forEach(function(t){ html += '<option value="'+t+'"'+(activeTherapist===t?' selected':'')+'>'+t+'</option>'; });
+  html += '</select>';
+  container.innerHTML = html;
+  var sel = document.getElementById('therapist-select');
+  sel.addEventListener('change', function(){ activeTherapist = sel.value || null; renderDash(allRows); });
+}
+
+function renderBranchFilter() {
+  var container = document.getElementById('branch-filter');
+  if (!container) return;
+  var branches = allRows.map(function(r){ var raw = parseJson(r['Raw Answers (JSON)'], '{}'); return r['Branch'] || raw._branch || ''; }).filter(function(b){ return b && b.trim(); });
+  branches = Array.from(new Set(branches));
+  if (branches.length === 0) { container.innerHTML = ''; return; }
+  var html = '<select id="branch-select" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px">';
+  html += '<option value="">All branches</option>';
+  branches.forEach(function(b){ html += '<option value="'+b+'"'+(activeBranch===b?' selected':'')+'>'+b+'</option>'; });
+  html += '</select>';
+  container.innerHTML = html;
+  var sel = document.getElementById('branch-select');
+  sel.addEventListener('change', function(){ activeBranch = sel.value || null; renderDash(allRows); });
+}
+
+function onIssueClick(section, qidPrefix, qShort) {
+  // called from issue row onclick; parameters are encoded by JSON.stringify then encodeURIComponent
+  try { section = JSON.parse(decodeURIComponent(section)); } catch(e) {}
+  try { qidPrefix = JSON.parse(decodeURIComponent(qidPrefix)); } catch(e) {}
+  try { qShort = JSON.parse(decodeURIComponent(qShort)); } catch(e) {}
+  activeIssue = { section: section, qidPrefix: qidPrefix, qShort: qShort };
+  // clear record selection
+  activeRecordKey = null; currentDetailKey = null;
+  renderDash(allRows);
+}
+
+function openFullView(rowKey) {
+  if (!rowKey) return;
+  var row = allRows.find(function(r){ return r.__rowKey === rowKey; });
+  if (!row) return;
+  var payload = { row: row };
+  var json = JSON.stringify(payload);
+  // encode to base64 safe token
+  try {
+    var encoded = btoa(unescape(encodeURIComponent(json)));
+    var url = 'viewer.html#' + encoded;
+    window.open(url, '_blank');
+  } catch(e) { alert('Could not open full view: ' + e.message); }
+}
+
+function getRowScore(row) {
+  var score = toNumber(row['Overall Score %']);
+  if (score === null) score = toNumber(row['S14 Final %']);
+  if (score === null) score = toNumber(row.final);
+  return score === null ? 0 : score;
+}
+
+function getOutcomeTotals(row) {
+  var totalYes = parseInt(row['Total Yes'], 10);
+  var totalNo = parseInt(row['Total No'], 10);
+  if (!isNaN(totalYes) && !isNaN(totalNo)) {
+    return { yes: totalYes, no: totalNo };
+  }
+
+  var answers = parseJson(row['Raw Answers (JSON)'], '{}');
+  var issues = parseJson(row['Issues (JSON)'], '[]');
+  var answeredCount = 0;
+  Object.keys(answers).forEach(function(key) {
+    if (/^q\d+_\d+$/.test(key) && (answers[key] === 'yes' || answers[key] === 'no')) {
+      answeredCount++;
+    }
+  });
+
+  return {
+    yes: Math.max(answeredCount - issues.length, 0),
+    no: issues.length
+  };
+}
+
+function getVisibleRows() {
+  var rows = allRows.slice();
+  if (activeBranch) {
+    rows = rows.filter(function(r) {
+      var raw = parseJson(r['Raw Answers (JSON)'], '{}');
+      var b = r['Branch'] || raw._branch || '';
+      return b === activeBranch;
+    });
+  }
+  if (activeTherapist) {
+    rows = rows.filter(function(r) {
+      var raw = parseJson(r['Raw Answers (JSON)'], '{}');
+      var t = r['Therapist'] || raw._therapist || '';
+      return t === activeTherapist;
+    });
+  }
+  if (activeIssue) {
+    rows = rows.filter(function(r) {
+      try {
+        var issues = JSON.parse(r['Issues (JSON)'] || '[]');
+        return issues.some(function(iss) { return iss.q && iss.q.indexOf(activeIssue.qidPrefix) === 0; });
+      } catch(e) { return false; }
+    });
+  }
+  if (activeRecordKey) rows = rows.filter(function(row) { return row.__rowKey === activeRecordKey; });
+  return rows;
+}
+
+function hideRecordModal() {
+  document.getElementById('record-modal-overlay').style.display = 'none';
+}
+
+function clearRecordFilter() {
+  activeRecordKey = null;
+  currentDetailKey = null;
+  hideRecordModal();
+  renderDash(allRows);
+}
+
+function filterToCurrentRecord() {
+  if (!currentDetailKey) return;
+  activeRecordKey = currentDetailKey;
+  hideRecordModal();
+  renderDash(allRows);
+}
+
+function openRecordDetail(rowKey) {
+  var row = allRows.find(function(item) { return item.__rowKey === rowKey; });
+  if (!row) return;
+
+  currentDetailKey = rowKey;
+  var score = getRowScore(row);
+  var totals = getOutcomeTotals(row);
+  var timestamp = row['Timestamp'] ? new Date(row['Timestamp']) : null;
+  var when = timestamp ? timestamp.toLocaleString() : 'Unknown time';
+  var issues = parseJson(row['Issues (JSON)'], '[]');
+  var openAnswers = parseJson(row['Open Answers (JSON)'], '{}');
+  var rawAnswers = parseJson(row['Raw Answers (JSON)'], '{}');
+
+  document.getElementById('record-modal-title').textContent = getSubmissionId(row) + ' · ' + score + '%';
+  document.getElementById('record-modal-sub').textContent = when + (row['Score Label'] ? ' · ' + row['Score Label'] : '');
+  document.getElementById('record-filter-btn').textContent = activeRecordKey === rowKey ? 'Already filtered' : 'Show only this record';
+
+  var body = '';
+  body += '<div class="record-modal-grid">';
+  body += '<div class="record-metric"><div class="record-metric-label">Overall score</div><div class="record-metric-value">' + score + '%</div></div>';
+  body += '<div class="record-metric"><div class="record-metric-label">Positive outcomes</div><div class="record-metric-value">' + totals.yes + '</div></div>';
+  body += '<div class="record-metric"><div class="record-metric-label">Negative outcomes</div><div class="record-metric-value">' + totals.no + '</div></div>';
+  body += '</div>';
+
+  var branch = row['Branch'] || rawAnswers._branch || '';
+  var therapist = row['Therapist'] || rawAnswers._therapist || '';
+  var services = row['Services'] || (Array.isArray(rawAnswers._services) ? rawAnswers._services.join(', ') : '');
+  if (branch || therapist || services) {
+    body += '<div class="record-section">';
+    body += '<h4>Submission details</h4>';
+    body += '<div class="record-note">';
+    if (branch) body += 'Branch: ' + branch + '<br>';
+    if (therapist) body += 'Therapist: ' + therapist + '<br>';
+    if (services) body += 'Services: ' + services;
+    body += '</div></div>';
+  }
+
+  var sectionBlocks = [];
+  SECTION_COLS.forEach(function(sc) {
+    var pct = parseFloat(row[sc.key]);
+    if (isNaN(pct)) return;
+    var color = pct >= 75 ? '#1D9E75' : pct >= 60 ? '#EF9F27' : '#E24B4A';
+    sectionBlocks.push(
+      '<div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:13px">' + sc.label + '</span><span style="font-family:DM Mono,monospace;font-size:12px;color:' + color + '">' + pct + '%</span></div>' +
+      '<div style="height:5px;background:#f0f0f0;border-radius:4px;overflow:hidden"><div style="height:5px;width:' + pct + '%;background:' + color + ';border-radius:4px"></div></div>' +
+      '</div>'
+    );
+  });
+  if (sectionBlocks.length) {
+    body += '<div class="record-section"><h4>Section scores</h4><div class="record-list">' + sectionBlocks.join('') + '</div></div>';
+  }
+
+  if (issues.length) {
+    body += '<div class="record-section"><h4>Issues flagged</h4><div class="record-list">';
+    issues.forEach(function(iss) {
+      var meta = getFlagInfo(iss.q || '');
+      var displaySection = meta.section || iss.section || 'Issue';
+      var displayIssue = meta.issue || (iss.q || '');
+      body += '<div class="record-note"><strong>' + displaySection + ':</strong> ' + (meta.qid ? (meta.qid + ' · ') : '') + displayIssue + (iss.note ? ' · ' + iss.note : '') + '</div>';
+    });
+    body += '</div></div>';
+  }
+
+  var openKeys = Object.keys(openAnswers).filter(function(key) { return openAnswers[key] !== undefined && openAnswers[key] !== null && String(openAnswers[key]).trim() !== ''; });
+  if (openKeys.length) {
+    body += '<div class="record-section"><h4>Open answers</h4><div class="record-list">';
+    openKeys.forEach(function(key) {
+      body += '<div class="record-note"><strong>' + key + ':</strong> ' + openAnswers[key] + '</div>';
+    });
+    body += '</div></div>';
+  }
+
+  document.getElementById('record-modal-body').innerHTML = body || '<div class="record-note">No detail data available for this record.</div>';
+  document.getElementById('record-modal-overlay').style.display = 'flex';
+}
+
+function renderFilterBanner(visibleRows) {
+  var banner = document.getElementById('filter-banner');
+  var parts = [];
+  if (activeIssue) parts.push('<strong>Issue:</strong> ' + activeIssue.section + ' · ' + activeIssue.qShort);
+  if (activeBranch) parts.push('<strong>Branch:</strong> ' + activeBranch);
+  if (activeTherapist) parts.push('<strong>Therapist:</strong> ' + activeTherapist);
+  if (activeRecordKey) {
+    var row = visibleRows[0] || {};
+    var score = getRowScore(row);
+    var date = row['Timestamp'] ? new Date(row['Timestamp']).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : 'Selected record';
+    parts.push('<strong>Record:</strong> ' + date + ' · ' + getSubmissionId(row) + ' · ' + score + '%');
+  }
+
+  if (parts.length === 0) {
+    banner.style.display = 'none';
+    banner.innerHTML = '';
+    return;
+  }
+
+  banner.innerHTML = '<div>' + parts.join(' &nbsp; • &nbsp; ') + '</div>' +
+    '<div class="filter-banner-actions"><button class="mini-btn" onclick="clearAllFilters()">Clear filters</button></div>';
+  banner.style.display = 'flex';
+}
+
+function clearAllFilters() {
+  activeIssue = null; activeBranch = null; activeTherapist = null; activeRecordKey = null; currentDetailKey = null;
+  hideRecordModal(); renderDash(allRows);
+}
+
+function loadData() {
+  document.getElementById('loading-state').style.display = 'block';
+  document.getElementById('dash').style.display = 'none';
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('error-banner').style.display = 'none';
+
+  if (!SHEET_URL) {
+    document.getElementById('loading-state').style.display = 'none';
+    showError('SHEET_URL is missing. Add it to config.local.js.');
+    return;
+  }
+
+  fetch(SHEET_URL)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById('loading-state').style.display = 'none';
+      if (data.status === 'error') {
+        showError('Sheet error: ' + data.message);
+        return;
+      }
+      if (!data.rows || data.rows.length === 0) {
+        document.getElementById('empty-state').style.display = 'block';
+        return;
+      }
+      allRows = data.rows.map(function(row, index) {
+        row.__rowKey = makeRowKey(index);
+        return row;
+      });
+      renderDash(allRows);
+    })
+    .catch(function(e) {
+      document.getElementById('loading-state').style.display = 'none';
+      showError('Could not reach the Apps Script URL. Check that SHEET_URL is set correctly and the web app is deployed as "Anyone" can access.');
+    });
+}
+
+function showError(msg) {
+  var el = document.getElementById('error-banner');
+  el.style.display = 'block';
+  el.textContent = '⚠ ' + msg;
+}
+
+function renderDash(rows) {
+  document.getElementById('dash').style.display = 'block';
+  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+  var visibleRows = getVisibleRows();
+  if (activeRecordKey && visibleRows.length === 0) {
+    activeRecordKey = null;
+    visibleRows = rows;
+  }
+
+  renderFilterBanner(visibleRows);
+  renderBranchFilter();
+  renderTherapistFilter();
+
+  var n = visibleRows.length;
+  var overalls = visibleRows.map(function(r) { return getRowScore(r); });
+  var avg = Math.round(overalls.reduce(function(a,b){return a+b;},0) / n);
+  var latest = overalls[overalls.length - 1];
+  var best = Math.max.apply(null, overalls);
+  var worst = Math.min.apply(null, overalls);
+
+  // ── KPIs ───────────────────────────────────────────────
+  var badgeClass = avg >= 90 ? 'excellent' : avg >= 75 ? 'good' : avg >= 60 ? 'improve' : 'poor';
+  var badgeLabel = avg >= 90 ? 'Excellent' : avg >= 75 ? 'Good' : avg >= 60 ? 'Needs improvement' : 'Poor';
+
+  document.getElementById('kpi-row').innerHTML =
+    kpiCard('Avg score', avg + '%', n + ' audits', true) +
+    kpiCard('Latest', latest + '%', 'Most recent audit') +
+    kpiCard('Best', best + '%', 'Highest submission') +
+    kpiCard('Worst', worst + '%', 'Lowest submission') +
+    kpiCard('Submissions', n, '<span class="badge '+badgeClass+'">'+badgeLabel+'</span>');
+
+  // ── SECTION AVERAGES ───────────────────────────────────
+  var secAvgs = SECTION_COLS.map(function(sc) {
+    var vals = visibleRows.map(function(r) { return parseFloat(r[sc.key]); }).filter(function(v) { return !isNaN(v); });
+    return vals.length > 0 ? Math.round(vals.reduce(function(a,b){return a+b;},0) / vals.length) : null;
+  });
+
+  var secHtml = '';
+  SECTION_COLS.forEach(function(sc, i) {
+    var pct = secAvgs[i];
+    if (pct === null) return;
+    var color = pct >= 75 ? '#1D9E75' : pct >= 60 ? '#EF9F27' : '#E24B4A';
+    secHtml += '<div class="sec-bar-wrap">';
+    secHtml += '<div class="sec-bar-top"><span class="sec-bar-name">' + sc.label + '</span><span class="sec-bar-pct">' + pct + '%</span></div>';
+    secHtml += '<div class="sec-bar-track"><div class="sec-bar-fill" style="width:'+pct+'%;background:'+color+'"></div></div>';
+    secHtml += '</div>';
+  });
+  document.getElementById('sec-bars').innerHTML = secHtml;
+
+  // ── TREND CHART ────────────────────────────────────────
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(document.getElementById('trend-chart'), {
+    type: 'line',
+    data: {
+      labels: visibleRows.map(function(r, i) {
+        var d = r['Timestamp'] ? new Date(r['Timestamp']) : null;
+        return d ? (d.getMonth()+1)+'/'+(d.getDate()) : '#'+(i+1);
+      }),
+      datasets: [{
+        label: 'Score %',
+        data: overalls,
+        borderColor: '#1D9E75',
+        backgroundColor: 'rgba(29,158,117,0.08)',
+        borderWidth: 2,
+        pointBackgroundColor: '#1D9E75',
+        pointRadius: 4,
+        fill: true,
+        tension: 0.35
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { min: 0, max: 100, grid: { color: '#f0f0f0' }, ticks: { font: { family: 'DM Mono', size: 11 } } },
+        x: { grid: { display: false }, ticks: { font: { family: 'DM Mono', size: 11 } } }
+      }
+    }
+  });
+
+  // ── RADAR CHART ────────────────────────────────────────
+  if (radarChart) radarChart.destroy();
+  radarChart = new Chart(document.getElementById('radar-chart'), {
+    type: 'radar',
+    data: {
+      labels: SECTION_COLS.map(function(s){return s.label;}),
+      datasets: [{
+        label: 'Avg %',
+        data: secAvgs.map(function(v){return v===null?0:v;}),
+        borderColor: '#0F6E56',
+        backgroundColor: 'rgba(29,158,117,0.12)',
+        borderWidth: 2,
+        pointBackgroundColor: '#0F6E56',
+        pointRadius: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { stepSize: 25, font: { size: 10, family: 'DM Mono' }, backdropColor: 'transparent' },
+          pointLabels: { font: { size: 10, family: 'DM Mono' } },
+          grid: { color: '#e5e7eb' }
+        }
+      }
+    }
+  });
+
+  // ── TOP ISSUES ─────────────────────────────────────────
+  var issueCounts = {};
+  var issueMetaByKey = {};
+  visibleRows.forEach(function(r) {
+    try {
+      var issues = JSON.parse(r['Issues (JSON)'] || '[]');
+      issues.forEach(function(iss) {
+        var meta = getFlagInfo(iss.q || '');
+        var key = meta.flag || meta.qid || (iss.section + '||' + iss.q);
+        issueCounts[key] = (issueCounts[key] || 0) + 1;
+        issueMetaByKey[key] = meta;
+      });
+    } catch(e) {}
+  });
+
+  var issArr = Object.keys(issueCounts).map(function(k) {
+    var meta = issueMetaByKey[k] || {};
+    return { key: k, section: meta.section || '', qid: meta.qid || '', issue: meta.issue || '', flag: meta.flag || '', count: issueCounts[k] };
+  }).sort(function(a,b){return b.count-a.count;}).slice(0,8);
+
+  var issHtml = '';
+  if (issArr.length === 0) {
+    issHtml = '<p style="font-size:13px;color:var(--text-muted)">No issues flagged across all audits.</p>';
+  } else {
+    issArr.forEach(function(iss) {
+      var qidPrefix = iss.qid;
+      var displaySection = iss.section || 'Issue';
+      var displayIssue = iss.issue || 'Unknown issue';
+
+      // clickable row: clicking filters to records with this issue
+      issHtml += '<div class="issue-row" style="cursor:pointer" onclick="onIssueClick(\'' + encodeURIComponent(JSON.stringify(displaySection)) + '\',\'' + encodeURIComponent(JSON.stringify(qidPrefix)) + '\',\'' + encodeURIComponent(JSON.stringify(displayIssue)) + '\')">';
+      issHtml += '<div style="display:flex;justify-content:space-between;align-items:center">';
+      issHtml += '<span class="issue-sec">' + displaySection + ' · ' + qidPrefix + '</span>';
+      issHtml += '<span class="issue-count">' + iss.count + 'x</span>';
+      issHtml += '</div>';
+      issHtml += '<div class="issue-q">' + displayIssue + '</div>';
+      issHtml += '</div>';
+    });
+  }
+  document.getElementById('issues-list').innerHTML = issHtml;
+
+  // ── SUBMISSIONS TABLE ──────────────────────────────────
+  var tbody = '';
+  var sorted = visibleRows.slice().reverse();
+  sorted.forEach(function(r) {
+    var score = getRowScore(r);
+    var chipClass = score>=90?'chip-e':score>=75?'chip-g':score>=60?'chip-i':'chip-p';
+    var d = r['Timestamp'] ? new Date(r['Timestamp']) : null;
+    var dateStr = d ? d.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '—';
+    tbody += '<tr class="record-row'+(activeRecordKey===r.__rowKey?' selected':'')+'" onclick="openRecordDetail(\'' + r.__rowKey + '\')">';
+    tbody += '<td>' + dateStr + '</td>';
+    tbody += '<td>' + getSubmissionId(r) + '</td>';
+    tbody += '<td><span class="score-chip '+chipClass+'">' + score + '%</span></td>';
+    tbody += '<td>' + (r['Score Label'] || '—') + '</td>';
+    tbody += '<td>' + (r['Total Yes'] || 0) + '</td>';
+    tbody += '<td>' + (r['Total No'] || 0) + '</td>';
+    tbody += '</tr>';
+  });
+  document.getElementById('sub-tbody').innerHTML = tbody;
+}
+
+function kpiCard(label, value, sub, highlight) {
+  return '<div class="kpi-card' + (highlight?' highlight':'') + '">' +
+    '<div class="kpi-label">' + label + '</div>' +
+    '<div class="kpi-value">' + value + '</div>' +
+    '<div class="kpi-sub">' + sub + '</div>' +
+    '</div>';
+}
+
+loadData();
+</script>
+</body>
+</html>

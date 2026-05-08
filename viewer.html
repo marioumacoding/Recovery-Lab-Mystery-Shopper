@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Audit — Full view</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body{font-family:DM Sans,Arial,sans-serif;padding:1rem;background:#f7f8fa;color:#111}
+  .card{background:#fff;border-radius:12px;padding:1rem;margin-bottom:1rem;border:1px solid #eee}
+  .meta{font-family:DM Mono,monospace;font-size:13px;color:#555;margin-bottom:.5rem}
+  .q{display:flex;justify-content:space-between;padding:.45rem 0;border-top:1px solid #f0f0f0}
+  .q:first-child{border-top:none}
+  .qid{font-family:DM Mono,monospace;color:#0F6E56;margin-right:8px}
+  .qtext{flex:1;white-space:normal;line-height:1.45}
+  .resp{font-family:DM Mono,monospace}
+  .note{background:#fff3f3;border-left:4px solid #f4c4c3;padding:.5rem;margin-top:.3rem}
+  .open-note{background:#fff3f3;border-left:4px solid #f4c4c3;padding:.5rem;margin-top:.3rem}
+  .open-note-title{font-weight:600;margin-bottom:.25rem}
+  .responses-header{font-weight:600;margin-bottom:.5rem}
+  .resp-row{display:flex;justify-content:space-between;gap:12px;padding:.45rem 0;border-top:1px solid #f0f0f0;align-items:flex-start}
+  .resp-row:first-child{border-top:none}
+  .resp-meta{display:flex;gap:8px;align-items:flex-start;min-width:0;flex:1}
+  .resp-question{white-space:normal;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="card" id="meta"></div>
+<div id="content"></div>
+<script>
+(function(){
+  function decodeHash(){
+    try{
+      var h = location.hash.replace(/^#/, '');
+      if(!h) return null;
+      var json = decodeURIComponent(escape(atob(h)));
+      return JSON.parse(json);
+    }catch(e){return null;}
+  }
+  var payload = decodeHash();
+  if(!payload||!payload.row){ document.getElementById('meta').innerText='No record data found.'; return; }
+  var row = payload.row;
+  var raw = {};
+  try{ raw = JSON.parse(row['Raw Answers (JSON)']||'{}'); }catch(e){}
+  var openAnswers = {};
+  try{ openAnswers = JSON.parse(row['Open Answers (JSON)']||'{}'); }catch(e){}
+  var issues = [];
+  try{ issues = JSON.parse(row['Issues (JSON)']||'[]'); }catch(e){}
+
+  var FLAG_MAP = {
+    "1.1": { section: "Booking Experience", flag: "slow_response", issue: "Delayed response time" },
+    "1.2": { section: "Booking Experience", flag: "unprofessional_response", issue: "Unwelcoming or unprofessional tone" },
+    "1.3": { section: "Booking Experience", flag: "poor_english_communication", issue: "Unclear English communication" },
+    "1.4": { section: "Booking Experience", flag: "poor_arabic_communication", issue: "Unclear Arabic communication" },
+    "1.5": { section: "Booking Experience", flag: "no_needs_assessment", issue: "No client needs assessment" },
+    "1.6": { section: "Booking Experience", flag: "unclear_service_explanation", issue: "Services not clearly explained" },
+    "1.7": { section: "Booking Experience", flag: "no_recommendation", issue: "No personalized service recommendation" },
+    "1.8": { section: "Booking Experience", flag: "no_upgrade_suggestion", issue: "No upsell or package suggestion" },
+    "1.9": { section: "Booking Experience", flag: "no_offers_mentioned", issue: "No offers or discounts mentioned" },
+    "1.10": { section: "Booking Experience", flag: "non_consultative_booking", issue: "Booking felt transactional, not consultative" },
+    "1.11": { section: "Booking Experience", flag: "no_confirmation_sent", issue: "No confirmation message received" },
+    "1.12": { section: "Booking Experience", flag: "incomplete_confirmation", issue: "Missing booking details in confirmation" },
+    "1.13": { section: "Booking Experience", flag: "no_followup", issue: "No pre-appointment follow-up" },
+    "1.14": { section: "Booking Experience", flag: "poor_followup_quality", issue: "Unhelpful or unprofessional follow-up" },
+    "2.1": { section: "Arrival Experience", flag: "hard_to_find_location", issue: "Location difficult to find" },
+    "2.2": { section: "Arrival Experience", flag: "weak_first_impression", issue: "Poor first impression (cleanliness/aesthetic/atmosphere)" },
+    "2.3": { section: "Arrival Experience", flag: "no_warm_greeting", issue: "No immediate or warm greeting" },
+    "2.4": { section: "Arrival Experience", flag: "long_wait_time", issue: "Excessive waiting time" },
+    "3.1": { section: "Check-in", flag: "missing_consent_form", issue: "No medical/consent form provided" },
+    "3.2": { section: "Check-in", flag: "unclear_form_explanation", issue: "Form not clearly explained" },
+    "3.3": { section: "Check-in", flag: "rushed_form_process", issue: "Form given at inappropriate time (rushed)" },
+    "3.4": { section: "Check-in", flag: "no_form_review", issue: "Staff did not review answers" },
+    "3.5": { section: "Check-in", flag: "poor_checkin_process", issue: "Unsmooth check-in experience" },
+    "3.6": { section: "Check-in", flag: "no_therapist_preference", issue: "No therapist preference asked" },
+    "4.1": { section: "Communication", flag: "unprofessional_communication", issue: "Poor or unpolished communication" },
+    "5.1": { section: "Facility", flag: "unclean_lockers", issue: "Locker rooms not clean" },
+    "5.2": { section: "Facility", flag: "missing_essentials", issue: "Missing towel/robe/slippers" },
+    "5.3": { section: "Facility", flag: "privacy_issue_lockers", issue: "Privacy not respected in locker area" },
+    "5.4": { section: "Facility", flag: "poor_lockers_setup", issue: "Lockers not prepared or uncomfortable" },
+    "6.1": { section: "Cleanliness", flag: "unclean_facility", issue: "Overall cleanliness poor" },
+    "6.2": { section: "Cleanliness", flag: "inconsistent_cleanliness", issue: "Cleanliness inconsistent across areas" },
+    "6.3": { section: "Cleanliness", flag: "bad_scent", issue: "Unpleasant smell" },
+    "6.4": { section: "Cleanliness", flag: "inconsistent_scent", issue: "Scent not consistent" },
+    "6.5": { section: "Cleanliness", flag: "poor_air_quality", issue: "Uncomfortable air quality" },
+    "7.1": { section: "Atmosphere", flag: "no_relaxing_environment", issue: "Environment not quiet or relaxing" },
+    "7.2": { section: "Atmosphere", flag: "unprofessional_staff_behavior", issue: "Staff behavior not professional" },
+    "8.1": { section: "Service", flag: "room_not_ready", issue: "Room not ready upon arrival" },
+    "8.2": { section: "Service", flag: "unclean_room", issue: "Room not clean" },
+    "8.3": { section: "Service", flag: "unprofessional_therapist", issue: "Therapist not professional" },
+    "8.4": { section: "Service", flag: "no_assessment_before_service", issue: "No condition assessment before treatment" },
+    "8.5": { section: "Service", flag: "poor_communication_during_session", issue: "Inappropriate communication during session" },
+    "8.6": { section: "Service", flag: "poor_pressure_adjustment_response", issue: "Therapist did not adjust pressure correctly" },
+    "8.7": { section: "Service", flag: "inconsistent_pressure", issue: "Pressure not consistent" },
+    "8.8": { section: "Service", flag: "no_comfort_check", issue: "No comfort check during session" },
+    "8.9": { section: "Service", flag: "lack_of_focus", issue: "Therapist not focused" },
+    "8.10": { section: "Service", flag: "no_clear_guidance", issue: "No clear guidance during experience" },
+    "8.11": { section: "Service", flag: "poor_structure_guidance", issue: "Guidance not structured" },
+    "8.12": { section: "Service", flag: "pushy_staff", issue: "Staff was pushy" },
+    "8.13": { section: "Service", flag: "unprofessional_moroccan_bath", issue: "Moroccan bath not professional" },
+    "8.14": { section: "Service", flag: "privacy_issue_bath", issue: "Moroccan bath not private" },
+    "9.1": { section: "Privacy", flag: "privacy_not_respected", issue: "Overall privacy not respected" },
+    "9.2": { section: "Privacy", flag: "privacy_breach", issue: "Unexpected entry / privacy violation" },
+    "9.3": { section: "Privacy", flag: "no_privacy_information", issue: "Client not informed about shared spaces" }
+  };
+
+  function getFlagInfo(issueText) {
+    var qid = (issueText || '').trim().split(/\s+/)[0] || '';
+    var meta = FLAG_MAP[qid] || null;
+    return { qid: qid, section: meta ? meta.section : '', flag: meta ? meta.flag : '', issue: meta ? meta.issue : '' };
+  }
+
+  function normalizeQuestionKey(key) {
+    var k = String(key || '').trim();
+    if (!k) return k;
+    if (/^\d+\.\d+$/.test(k)) return ('q' + k).replace(/\./g, '_');
+    if (/^q\d+\.\d+$/.test(k)) return k.replace(/\./g, '_');
+    return k.replace(/\./g, '_');
+  }
+
+  function looksLikeSubmissionId(value) {
+    if (!value) return false;
+    return /^[A-Z]{2,10}-\d{8}-[A-Z0-9]{4,10}$/.test(String(value).trim());
+  }
+
+  function getSubmissionIdDisplay() {
+    var fromRaw = raw._submissionId || '';
+    var fromCol = row['Auditor'] || '';
+    if (looksLikeSubmissionId(fromRaw)) return fromRaw;
+    if (looksLikeSubmissionId(fromCol)) return fromCol;
+    var key = row.__rowKey || 'r0';
+    return 'LEGACY-' + String(key).replace(/^r/, '').padStart(4, '0');
+  }
+
+  var QUESTION_TITLES = {
+    q1_1:'Was the response time fast?',
+    q1_2:'Was the response professional and welcoming?',
+    q1_3:'Was the English communication clear and professional?',
+    q1_4:'Was the Arabic communication clear and professional?',
+    q1_5:'Did they ask about your needs (pain, activity, recovery goals)?',
+    q1_6:'Did they clearly explain the services?',
+    q1_7:'Did they recommend a service based on your needs?',
+    q1_8:'Did they suggest upgrades, packages, or better options?',
+    q1_9:'Did they mention any offers, discounts, or packages?',
+    q1_10:'Did the conversation feel consultative (not just booking)?',
+    q1_11:'Did you receive a confirmation message?',
+    q1_12:'Did the confirmation include all details (time, service, location)?',
+    q1_13:'Did they follow up before your appointment?',
+    q1_14:'Was the follow-up professional and helpful?',
+    q2_1:'Was the location easy to find?',
+    q2_2:'Was the first impression premium and welcoming?',
+    q2_3:'Were you greeted immediately and warmly?',
+    q2_4:'Was the waiting time acceptable?',
+    q3_1:'Were you given a medical/consent form?',
+    q3_2:'Was the form clearly explained?',
+    q3_3:'Was the form given at the right time (not rushed)?',
+    q3_4:'Did staff review your answers?',
+    q3_5:'Was the check-in process smooth?',
+    q3_6:'Were you asked about therapist preference (gender/nationality)?',
+    q4_1:'Was staff communication polished and professional?',
+    q5_1:'Were the locker rooms clean?',
+    q5_2:'Were essential items provided (towel, robe, slippers)?',
+    q5_3:'Was your privacy respected in locker areas?',
+    q5_4:'Were the lockers comfortable and well-prepared?',
+    q6_1:'Was the overall place clean?',
+    q6_2:'Was cleanliness consistent across all areas?',
+    q6_3:'Was the scent pleasant and fresh?',
+    q6_4:'Was the scent consistent across the space?',
+    q6_5:'Was the air quality comfortable?',
+    q7_1:'Was the environment quiet and relaxing?',
+    q7_2:'Was staff behavior professional and respectful?',
+    q8_1:'Was the room ready upon arrival?',
+    q8_2:'Was the room clean?',
+    q8_3:'Was the therapist professional?',
+    q8_4:'Did the therapist assess your condition before starting?',
+    q8_5:'Was communication during the session appropriate (not distracting)?',
+    q8_6:'When you requested pressure adjustment, did they respond correctly?',
+    q8_7:'Was the pressure consistent throughout the session?',
+    q8_8:'Did the therapist check your comfort during the session?',
+    q8_9:'Was the therapist fully focused during the session?',
+    q8_10:'Was there clear guidance during the spa experience?',
+    q8_11:'Was the guidance structured and professional?',
+    q8_12:'Was staff non-pushy during the experience?',
+    q8_13:'Was the Moroccan bath experience professional?',
+    q8_14:'Was the Moroccan bath private?',
+    q9_1:'Was your overall experience private?',
+    q9_2:'Were there any privacy issues (clients/staff entering unexpectedly)?',
+    q9_3:'Were you informed about any shared spaces in advance?',
+    q10_1:'Was your journey smooth and well-managed?',
+    q10_2:'Did you feel guided throughout your experience?',
+    q11_1:'Did the therapist avoid asking for tips?',
+    q11_2:'If tipping occurred, was it handled properly (through reception)?',
+    q12_1:'Was the payment process smooth?',
+    q13_1:'Did you receive a follow-up after your visit?',
+    q13_2:'Was the follow-up professional and useful?',
+    q14_1:'Did the experience feel like a structured recovery journey?',
+    q14_2:'Would you return?',
+    q14_3:'What stood out most?',
+    q14_4:'Biggest issue?'
+  };
+
+  function getQuestionLabel(key) {
+    var normalizedKey = normalizeQuestionKey(key);
+    return QUESTION_TITLES[normalizedKey] || normalizedKey.replace('_', '.');
+  }
+  var metaHtml = '';
+  var submissionId = getSubmissionIdDisplay();
+  metaHtml += '<div style="font-size:18px;font-weight:600">Submission ID: ' + submissionId + ' · ' + (row['Overall Score %']||row['S14 Final %']||row.final||'—') + '%</div>';
+  var date = row['Timestamp'] ? new Date(row['Timestamp']) : null;
+  metaHtml += '<div class="meta">' + (date?date.toLocaleString():'Unknown time') + ' · ' + (row['Branch']||raw._branch||'') + (row['Therapist']?(' · Therapist: '+row['Therapist']):'') + '</div>';
+  document.getElementById('meta').innerHTML = metaHtml;
+
+  // build content showing sections and questions
+  var sections = [
+    // minimal mapping — we'll reconstruct from keys in raw answers and issue list
+  ];
+  // We'll render questions present in raw answers and issues
+  var keys = Object.keys(raw).sort();
+  var content = '';
+  // Show issues prominently
+  if(issues.length){
+    content += '<div class="card"><div style="font-weight:600;margin-bottom:.5rem">Issues flagged ('+issues.length+')</div>';
+    issues.forEach(function(iss){
+      var meta = getFlagInfo(iss.q || '');
+      var note = iss.note || '';
+      content += '<div style="margin-bottom:.5rem"><span style="font-weight:600;color:#0F6E56">'+(meta.section || iss.section || '')+'</span> · <span style="font-family:DM Mono,monospace">'+(meta.qid || '')+'</span> · <span style="font-weight:500">'+(meta.issue || iss.q || '')+'</span>';
+      if(note) content += '<div class="note">' + note + '</div>';
+      content += '</div>';
+    });
+    content += '</div>';
+  }
+
+  // Render all yes/no questions found in raw
+  var ynKeys = keys.filter(function(k){ return /^q\d+_\d+$/.test(k) && (raw[k] === 'yes' || raw[k] === 'no'); });
+  if(ynKeys.length){
+    content += '<div class="card"><div class="responses-header">Responses</div>';
+    ynKeys.forEach(function(k){
+      var val = raw[k];
+      var note = raw[k+'_note'] || '';
+      var qText = QUESTION_TITLES[k] || k;
+      content += '<div class="resp-row"><div class="resp-meta"><span class="qid">'+k.replace('_','.')+'</span><span class="resp-question">'+qText+'</span></div><div class="resp">'+(val||'—')+'</div></div>';
+      if(val==='no'){
+        if(note){ content += '<div class="note">' + note + '</div>'; }
+        else { content += '<div class="note" style="background:#fff3e6;border-left:4px solid #f59e0b">No explanation provided (required)</div>'; }
+      }
+    });
+    content += '</div>';
+  }
+
+  // Open answers
+  var openKeys = Object.keys(openAnswers||{}).filter(function(k){
+    return openAnswers[k] !== undefined && openAnswers[k] !== null && String(openAnswers[k]).trim() !== '';
+  });
+  if(openKeys.length){
+    content += '<div class="card"><div style="font-weight:600;margin-bottom:.5rem">Open answers</div>';
+    openKeys.forEach(function(k){
+      var val = openAnswers[k];
+      content += '<div class="open-note">';
+      content += '<div class="open-note-title">'+getQuestionLabel(k)+'</div>';
+      content += '<div style="color:#333">'+(val ? val : '<em style="color:#6b7280">No answer provided</em>')+'</div>';
+      content += '</div>';
+    });
+    content += '</div>';
+  }
+
+  document.getElementById('content').innerHTML = content || '<div class="card">No detailed data available.</div>';
+})();
+</script>
+</body>
+</html>
